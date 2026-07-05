@@ -189,3 +189,38 @@ Gói nâng cấp 6 mục được đề xuất và duyệt (ghi trong spec §7 "
 **Verify:** npm test 60/60 pass (12 suites); tsc exit 0; expo-doctor 18/18.
 
 **Chờ user:** reload app trên iPhone, đánh giá lại giao diện + checklist cũ.
+
+## 2026-07-05 — Phase 3 "Planner Pro" (code hoàn tất, chờ user test)
+
+**User đã commit + push Phase 1-2 (15 commit).** Feedback tiếp: muốn tính năng
+nâng cao + giao diện bắt mắt kiểu các nền tảng planning nổi tiếng → brainstorm
+→ user duyệt gói 5 mục (spec §7b) → nghiên cứu kỹ thuật (subagent, 4 verdict
+chốt: Swipeable-in-ScrollView cần dragOffset 24 + ScrollView của RNGH; iOS giữ
+64 notification sớm nhất → cap 60; migration PRAGMA user_version; canvas
+absolute ≤50 view vô hại) → plan `2026-07-05-cadence-mvp-phase3.md` → thực thi.
+
+**Đã làm (TDD core trước, +22 test):**
+- `core/scheduler/layoutDay.ts`: hình học canvas + xếp lane khi chồng giờ
+  (cluster sweep, min-height 40 tính là chồng lấn).
+- `core/deadlineStatus.ts`: ok/soon(≤2h, đếm ngược)/late(quá hạn).
+- Parser: `#nhãn` → tag; "mai" đầu câu / "ngày mai" mọi vị trí → dayOffset 1
+  ("gặp mai lúc 3h" giữ hôm nay — heuristic tên người, có test); "hôm nay" strip.
+- `core/tagColor.ts` (palette 6 màu ấm, hash ổn định), `addDaysISO`, `weekOf`
+  (tuần Thứ Hai đầu), notificationPlan thêm date + future-day + `capPlan(60)`.
+- Data: migration v2 (user_version; ALTER TABLE ADD COLUMN tag — an toàn với
+  DB hiện có), queries pendingTasksBefore/moveTasksToDate/taskCountsByDate.
+- Store: selectedDate + weekCounts + carryover; reminder luôn sync hôm nay +
+  ngày mai bất kể đang xem ngày nào, cap 60.
+- UI: `DayCanvas` (ScrollView của RNGH, 1.6px/phút, vạch giờ, now-line tọa độ
+  thật, auto-scroll tới hiện tại), `CanvasBlock` (lane %, vạch màu tag, chip
+  đếm ngược deadline, compact <56px, swipe dragOffset 24), `WeekStrip`
+  (7 ngày + chấm mật độ), banner carryover, tiêu đề đổi theo ngày xem.
+- Xóa module bị thay thế: TimelineItem, NowDivider, GapRow, timelineGaps (+test).
+- Sửa lỗi screenshot: giờ bẻ dòng (cột 54pt + co chữ).
+
+**Verify:** npm test 78/78 (14 suites); tsc exit 0; expo-doctor 18/18.
+
+**Chờ user (checklist iPhone):** canvas tỷ lệ (việc dài cao hơn); 2 việc fixed
+chồng giờ tách 2 cột; week strip chuyển ngày; "mai họp nhóm 9h sáng" rơi vào
+ngày mai; "#học" ra vạch màu; deadline <2h hiện đếm ngược màu cam; banner
+chuyển việc cũ; notification cho việc ngày mai.

@@ -1,31 +1,39 @@
-import { useEffect, useMemo } from 'react';
-import { ListRenderItemInfo, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeInDown, LinearTransition, useReducedMotion } from 'react-native-reanimated';
 import { useDayStore } from '../src/stores/useDayStore';
 import { useSettingsStore } from '../src/stores/useSettingsStore';
-import { toMinutes } from '../src/core/time';
+import { todayISO, addDaysISO } from '../src/core/date';
 import { summarizeDay } from '../src/core/daySummary';
-import { buildTimeline, TimelineEntry } from '../src/core/timelineGaps';
-import { TimelineItem } from '../src/components/TimelineItem';
-import { GapRow } from '../src/components/GapRow';
-import { NowDivider } from '../src/components/NowDivider';
+import { WeekStrip } from '../src/components/WeekStrip';
+import { DayCanvas } from '../src/components/DayCanvas';
 import { EmptyDay } from '../src/components/EmptyDay';
 import { useTheme } from '../src/theme/useTheme';
 import { radii, space, type } from '../src/theme/tokens';
 
-function formatToday(): string {
-  return new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' });
+function headerFor(selectedDate: string): { caption: string; title: string } {
+  const [y, m, d] = selectedDate.split('-').map(Number);
+  const caption = new Date(y, m - 1, d).toLocaleDateString('vi-VN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+  const today = todayISO();
+  if (selectedDate === today) return { caption, title: 'Hôm nay' };
+  if (selectedDate === addDaysISO(today, 1)) return { caption, title: 'Ngày mai' };
+  return { caption, title: `Ngày ${d}/${m}` };
 }
 
 export default function TodayScreen() {
   const c = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const reduceMotion = useReducedMotion();
-  const { blocks, tasks, nowMin, tick, updateStatus, addFromText } = useDayStore();
+  const {
+    selectedDate, blocks, tasks, nowMin, weekCounts, carryover,
+    tick, updateStatus, addFromText, selectDate, moveCarryoverToToday,
+  } = useDayStore();
   const { dayStart, dayEnd } = useSettingsStore();
 
   useEffect(() => {
@@ -33,12 +41,9 @@ export default function TodayScreen() {
     return () => clearInterval(timer);
   }, [tick]);
 
-  const taskById = useMemo(() => new Map(tasks.map((t) => [t.id, t])), [tasks]);
-  const entries = useMemo(() => buildTimeline(blocks), [blocks]);
-  const summary = summarizeDay(tasks, blocks, nowMin, { dayStart, dayEnd });
-  const nowEntryIndex = entries.findIndex(
-    (e) => e.kind === 'block' && toMinutes(e.block.end) > nowMin,
-  );
+  const isToday = selectedDate === todayISO();
+  const { caption, title } = headerFor(selectedDate);
+  const summary = isToday ? summarizeDay(tasks, blocks, nowMin, { dayStart, dayEnd }) : null;
 
   function pickExample(text: string) {
     addFromText(text);
@@ -48,48 +53,41 @@ export default function TodayScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: c.bg, paddingTop: insets.top + space.m }]}>
       <View style={styles.header}>
-        <Text style={[type.caption, { color: c.inkMuted, textTransform: 'capitalize' }]}>{formatToday()}</Text>
-        <Text style={[type.display, { color: c.ink }]}>Hôm nay</Text>
+        <Text style={[type.caption, { color: c.inkMuted, textTransform: 'capitalize' }]}>{caption}</Text>
+        <Text style={[type.display, { color: c.ink }]}>{title}</Text>
         {summary ? <Text style={[type.caption, { color: c.inkMuted }]}>{summary}</Text> : null}
       </View>
 
-      {entries.length === 0 ? (
+      <WeekStrip selected={selectedDate} counts={weekCounts} onSelect={selectDate} />
+
+      {carryover > 0 ? (
+        <Pressable
+          accessibilityLabel={`Chuyển ${carryover} việc chưa xong từ hôm trước sang hôm nay`}
+          style={[styles.banner, { backgroundColor: c.accentSoft }]}
+          onPress={() => {
+            moveCarryoverToToday();
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }}
+        >
+          <Text style={[type.caption, { color: c.accent, flex: 1 }]}>
+            Còn {carryover} việc chưa xong từ hôm trước
+          </Text>
+          <Text style={[type.caption, { color: c.accent, fontWeight: '600' }]}>Chuyển sang hôm nay</Text>
+        </Pressable>
+      ) : null}
+
+      {blocks.length === 0 ? (
         <EmptyDay onPick={pickExample} />
       ) : (
-        <Animated.FlatList
-          data={entries}
-          keyExtractor={(entry: TimelineEntry, index: number) =>
-            entry.kind === 'block' ? entry.block.taskId : `gap-${index}`
-          }
-          itemLayoutAnimation={reduceMotion ? undefined : LinearTransition.springify().damping(18)}
-          renderItem={({ item, index }: ListRenderItemInfo<TimelineEntry>) => {
-            if (item.kind === 'gap') return <GapRow minutes={item.minutes} />;
-            const task = taskById.get(item.block.taskId);
-            if (!task) return null;
-            const row = (
-              <TimelineItem
-                block={item.block}
-                task={task}
-                isCurrent={
-                  toMinutes(item.block.start) <= nowMin &&
-                  nowMin < toMinutes(item.block.end) &&
-                  task.status === 'pending'
-                }
-                onDone={(id) => updateStatus(id, 'done')}
-                onSkip={(id) => updateStatus(id, 'skipped')}
-              />
-            );
-            return (
-              <Animated.View entering={reduceMotion ? undefined : FadeInDown.springify().damping(18)}>
-                {index === nowEntryIndex ? <NowDivider nowMin={nowMin} /> : null}
-                {row}
-              </Animated.View>
-            );
-          }}
-          ListFooterComponent={
-            nowEntryIndex === -1 && entries.length > 0 ? <NowDivider nowMin={nowMin} /> : null
-          }
-          contentContainerStyle={{ paddingVertical: space.s }}
+        <DayCanvas
+          blocks={blocks}
+          tasks={tasks}
+          nowMin={nowMin}
+          isToday={isToday}
+          dayStart={dayStart}
+          dayEnd={dayEnd}
+          onDone={(id) => updateStatus(id, 'done')}
+          onSkip={(id) => updateStatus(id, 'skipped')}
         />
       )}
 
@@ -124,6 +122,16 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingHorizontal: space.l, paddingBottom: space.m, gap: space.xs },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s,
+    marginHorizontal: space.m,
+    marginBottom: space.s,
+    paddingHorizontal: space.m,
+    minHeight: 44,
+    borderRadius: radii.s,
+  },
   footer: {
     flexDirection: 'row',
     gap: space.s,

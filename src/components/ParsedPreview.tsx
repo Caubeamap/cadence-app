@@ -12,6 +12,8 @@ export function ParsedPreview({ parsed }: { parsed: ParsedTask }) {
   ];
   if (parsed.deadline) chips.push(`trước ${parsed.deadline}`);
   if (parsed.priority === 'high') chips.push('ưu tiên cao');
+  if (parsed.dayOffset === 1) chips.push('ngày mai');
+  if (parsed.tag) chips.push(`#${parsed.tag}`);
 
   return (
     <View style={styles.wrap}>
