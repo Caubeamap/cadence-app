@@ -11,6 +11,7 @@ interface TaskRow {
   deadline: string | null;
   priority: string;
   status: string;
+  tag: string | null;
   created_at: number;
 }
 
@@ -25,6 +26,7 @@ function rowToTask(r: TaskRow): Task {
     ...(r.deadline !== null && { deadline: r.deadline }),
     priority: r.priority as Task['priority'],
     status: r.status as Task['status'],
+    ...(r.tag !== null && { tag: r.tag }),
     createdAt: r.created_at,
   };
 }
@@ -36,10 +38,10 @@ export function tasksForDate(date: string): Task[] {
 
 export function insertTask(t: Task): void {
   getDb().runSync(
-    `INSERT INTO tasks (id, title, date, duration_min, kind, fixed_start, deadline, priority, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO tasks (id, title, date, duration_min, kind, fixed_start, deadline, priority, status, tag, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     t.id, t.title, t.date, t.durationMin, t.kind, t.fixedStart ?? null,
-    t.deadline ?? null, t.priority, t.status, t.createdAt,
+    t.deadline ?? null, t.priority, t.status, t.tag ?? null, t.createdAt,
   );
 }
 
@@ -49,4 +51,28 @@ export function updateTaskStatus(id: string, status: Task['status']): void {
 
 export function deleteTask(id: string): void {
   getDb().runSync('DELETE FROM tasks WHERE id = ?', id);
+}
+
+export function pendingTasksBefore(date: string): Task[] {
+  const rows = getDb().getAllSync<TaskRow>(
+    "SELECT * FROM tasks WHERE date < ? AND status = 'pending' ORDER BY date, created_at",
+    date,
+  );
+  return rows.map(rowToTask);
+}
+
+export function moveTasksToDate(ids: string[], date: string): void {
+  if (ids.length === 0) return;
+  const placeholders = ids.map(() => '?').join(',');
+  getDb().runSync(`UPDATE tasks SET date = ? WHERE id IN (${placeholders})`, date, ...ids);
+}
+
+export function taskCountsByDate(dates: string[]): Record<string, number> {
+  if (dates.length === 0) return {};
+  const placeholders = dates.map(() => '?').join(',');
+  const rows = getDb().getAllSync<{ date: string; n: number }>(
+    `SELECT date, COUNT(*) AS n FROM tasks WHERE date IN (${placeholders}) GROUP BY date`,
+    ...dates,
+  );
+  return Object.fromEntries(rows.map((r) => [r.date, r.n]));
 }
