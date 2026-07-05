@@ -168,6 +168,30 @@ chữ; tôn trọng Reduce Motion (thay spring bằng fade); Dynamic Type không
 5. Micro-interactions: press lún nhẹ, item mới trượt vào, tick khi xong (tôn trọng Reduce Motion).
 6. Empty state có chip ví dụ bấm được (thêm việc mẫu ngay).
 
+## 7b. Phase 3 — "Planner Pro" (user duyệt 2026-07-05, gói 5 mục)
+
+1. **Timeline tỷ lệ thật:** thay FlatList bằng canvas cuộn (ScrollView) — block đặt
+   absolute, `top = start × pxPerMin`, `height = duration × pxPerMin` (~1.6 px/phút),
+   vạch giờ nền, đường "bây giờ" đặt đúng tọa độ thời gian. Toán layout (tọa độ +
+   xếp lane khi các việc fixed chồng giờ + minHeight bảo đảm tap target) là hàm
+   thuần `layoutDay()` trong core, TDD đầy đủ. Việc xong giữ nguyên vị trí, mờ đi.
+   ScrollView hợp lệ ở đây vì canvas ngày là bounded (~≤50 block), không phải long list.
+2. **Đếm ngược deadline:** `deadlineStatus(deadline, nowMin)` (core, TDD) →
+   {text "còn 1 tiếng 40", level ok/soon/late}; ngưỡng soon = còn ≤2 tiếng,
+   late = quá hạn. Chip trên card: muted → accent → danger.
+3. **Week strip:** dải 7 ngày đầu màn Today; store thêm `selectedDate`; ngày tương
+   lai chạy scheduler với nowMin = dayStart; thêm việc rơi vào ngày đang xem;
+   parser hiểu "mai / ngày mai" → tự nhắm ngày +1 (TDD). Chấm mật độ việc mỗi ngày.
+4. **Dồn sang hôm nay:** khi mở app có việc pending thuộc ngày cũ → banner
+   "Còn X việc chưa xong từ hôm trước" + nút chuyển tất cả sang hôm nay (đổi date).
+5. **Nhãn màu:** cú pháp `#nhãn` trong input (parser tách, TDD); cột `tag` thêm vào
+   SQLite qua migration v2 (PRAGMA user_version); màu gán từ palette ấm 6 màu cố
+   định theo hash tên nhãn (core `tagColor()`, TDD); UI: vạch màu trái card + tên
+   nhãn trong meta. Lọc theo nhãn để Phase 4.
+
+**Notification đa ngày:** kế hoạch notification mở rộng cửa sổ hôm nay + ngày mai;
+tôn trọng giới hạn 64 notification chờ của iOS (ưu tiên các việc sớm nhất).
+
 ## 8. Error handling
 
 - Parser không hiểu input → không chặn: tạo việc flexible 30 phút với title là
