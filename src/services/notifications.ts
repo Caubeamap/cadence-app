@@ -18,10 +18,9 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   return asked.granted;
 }
 
-function atToday(hhmm: string): Date {
-  const d = new Date();
-  d.setHours(Math.floor(toMinutes(hhmm) / 60), toMinutes(hhmm) % 60, 0, 0);
-  return d;
+function atDate(dateISO: string, hhmm: string): Date {
+  const [y, m, d] = dateISO.split('-').map(Number);
+  return new Date(y, m - 1, d, Math.floor(toMinutes(hhmm) / 60), toMinutes(hhmm) % 60, 0, 0);
 }
 
 export async function syncScheduledReminders(plan: PlannedNotification[]): Promise<void> {
@@ -30,7 +29,7 @@ export async function syncScheduledReminders(plan: PlannedNotification[]): Promi
     plan.map((p) =>
       Notifications.scheduleNotificationAsync({
         content: { title: p.title, body: p.body, sound: true, data: { taskId: p.taskId } },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: atToday(p.hhmm) },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: atDate(p.date, p.hhmm) },
       }),
     ),
   );
