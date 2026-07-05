@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -29,7 +29,7 @@ export default function AddTaskScreen() {
       style={[styles.screen, { backgroundColor: c.bg, paddingTop: space.l }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.content}>
+      <Pressable style={styles.content} onPress={Keyboard.dismiss} accessible={false}>
         <Text style={[type.display, { color: c.ink }]}>Thêm việc</Text>
         <TextInput
           autoFocus
@@ -49,7 +49,7 @@ export default function AddTaskScreen() {
             Cứ viết tự nhiên: "nộp báo cáo trước 5h chiều", "tập gym 45 phút"...
           </Text>
         )}
-      </View>
+      </Pressable>
       <View style={{ padding: space.l, paddingBottom: insets.bottom + space.m }}>
         <Pressable
           accessibilityLabel="Xếp việc này vào lịch"
