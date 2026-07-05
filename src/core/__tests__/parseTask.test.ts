@@ -2,7 +2,7 @@ import { parseTask } from '../parser/parseTask';
 
 test('plain text -> flexible 30min task', () => {
   expect(parseTask('đọc sách')).toEqual({
-    title: 'đọc sách', durationMin: 30, kind: 'flexible', priority: 'normal',
+    title: 'đọc sách', durationMin: 30, kind: 'flexible', priority: 'normal', dayOffset: 0,
   });
 });
 
@@ -60,4 +60,28 @@ test('priority keyword with non-ascii start', () => {
 
 test('unparseable stays safe', () => {
   expect(parseTask('!!!')).toMatchObject({ title: '!!!', durationMin: 30, kind: 'flexible' });
+});
+
+test('hashtag becomes tag', () => {
+  expect(parseTask('ôn thi ATBM #học 2 tiếng')).toMatchObject({
+    title: 'ôn thi ATBM', tag: 'học', durationMin: 120,
+  });
+});
+
+test('mai at start -> tomorrow', () => {
+  expect(parseTask('mai họp nhóm 9h sáng')).toMatchObject({
+    dayOffset: 1, kind: 'fixed', fixedStart: '09:00', title: 'họp nhóm',
+  });
+});
+
+test('ngay mai anywhere -> tomorrow', () => {
+  expect(parseTask('nộp đơn ngày mai trước 5h chiều')).toMatchObject({ dayOffset: 1, deadline: '17:00' });
+});
+
+test('mai mid-sentence is a name, not tomorrow', () => {
+  expect(parseTask('gặp mai lúc 3h chiều')).toMatchObject({ dayOffset: 0, title: 'gặp mai' });
+});
+
+test('hom nay is stripped, stays today', () => {
+  expect(parseTask('hôm nay tập gym 45 phút')).toMatchObject({ dayOffset: 0, title: 'tập gym' });
 });

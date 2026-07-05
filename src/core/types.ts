@@ -12,6 +12,7 @@ export interface Task {
   deadline?: string; // HH:mm, only meaningful for 'flexible'
   priority: Priority;
   status: TaskStatus;
+  tag?: string;
   createdAt: number; // epoch ms
 }
 
