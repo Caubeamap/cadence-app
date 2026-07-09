@@ -1,6 +1,7 @@
 import { memo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Task } from '../core/types';
 import { PositionedBlock } from '../core/scheduler/layoutDay';
@@ -14,9 +15,11 @@ import { PulseDot } from './PulseDot';
 interface Props {
   positioned: PositionedBlock;
   task: Task;
+  index: number;
   isCurrent: boolean;
   nowMin: number;
   isToday: boolean;
+  onOpen: (id: string) => void;
   onDone: (id: string) => void;
   onSkip: (id: string) => void;
 }
@@ -30,14 +33,14 @@ function ActionPane({ label, color }: { label: string; color: string }) {
 }
 
 export const CanvasBlock = memo(function CanvasBlock({
-  positioned, task, isCurrent, nowMin, isToday, onDone, onSkip,
+  positioned, task, index, isCurrent, nowMin, isToday, onOpen, onDone, onSkip,
 }: Props) {
   const c = useTheme();
   const { block, top, height, lane, lanes } = positioned;
-  const finished = task.status !== 'pending';
+  // The canvas only renders pending tasks; finished ones live in FinishedList.
   const compact = height < 56;
   const barColor = task.tag ? tagColor(task.tag) : c.hairline;
-  const dl = task.deadline && isToday && !finished ? deadlineStatus(task.deadline, nowMin) : null;
+  const dl = task.deadline && isToday ? deadlineStatus(task.deadline, nowMin) : null;
   const dlColor = dl?.level === 'late' ? c.danger : dl?.level === 'soon' ? c.accent : c.inkMuted;
 
   const meta: string[] = [formatDuration(task.durationMin)];
@@ -46,7 +49,9 @@ export const CanvasBlock = memo(function CanvasBlock({
   if (task.priority === 'high') meta.push('ưu tiên');
 
   return (
-    <View
+    <Animated.View
+      entering={FadeInDown.delay(Math.min(index, 8) * 30).springify().damping(18)}
+      exiting={FadeOut.duration(180)}
       style={{
         position: 'absolute',
         top,
@@ -57,7 +62,6 @@ export const CanvasBlock = memo(function CanvasBlock({
       }}
     >
       <ReanimatedSwipeable
-        enabled={!finished}
         dragOffsetFromLeftEdge={24}
         dragOffsetFromRightEdge={24}
         renderLeftActions={() => <ActionPane label="Xong" color={c.accent} />}
@@ -69,26 +73,25 @@ export const CanvasBlock = memo(function CanvasBlock({
         }}
         containerStyle={styles.swipeContainer}
       >
-        <View
+        <Pressable
+          onPress={() => onOpen(task.id)}
           style={[
             styles.card,
             {
               backgroundColor: isCurrent ? c.accentSoft : c.surface,
               borderColor: isCurrent ? c.accent : c.hairline,
               borderLeftColor: barColor,
-              opacity: finished ? 0.45 : 1,
             },
             compact && styles.cardCompact,
           ]}
-          accessibilityLabel={`${task.title}, từ ${block.start} đến ${block.end}${finished ? ', đã xong' : ''}`}
+          accessibilityLabel={`${task.title}, từ ${block.start} đến ${block.end}. Chạm để sửa.`}
         >
           <View style={styles.titleRow}>
             {isCurrent ? <PulseDot color={c.accent} /> : null}
             <Text
               style={[
                 compact ? type.body : type.section,
-                { color: finished ? c.inkMuted : c.ink, flexShrink: 1 },
-                finished && styles.strike,
+                { color: c.ink, flexShrink: 1 },
               ]}
               numberOfLines={compact ? 1 : 2}
             >
@@ -106,9 +109,9 @@ export const CanvasBlock = memo(function CanvasBlock({
               ) : null}
             </View>
           ) : null}
-        </View>
+        </Pressable>
       </ReanimatedSwipeable>
-    </View>
+    </Animated.View>
   );
 });
 
@@ -126,7 +129,6 @@ const styles = StyleSheet.create({
   },
   cardCompact: { justifyContent: 'center', paddingVertical: space.xs },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: space.s },
-  strike: { textDecorationLine: 'line-through' },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap' },
   action: { flex: 1, justifyContent: 'center', paddingHorizontal: space.l, borderRadius: radii.s },
   actionLabel: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },

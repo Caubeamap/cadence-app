@@ -8,6 +8,8 @@ import { toMinutes, toHHMM } from '../core/time';
 import { useTheme } from '../theme/useTheme';
 import { space, type } from '../theme/tokens';
 import { CanvasBlock } from './CanvasBlock';
+import { PulseDot } from './PulseDot';
+import { FinishedList } from './FinishedList';
 
 const PX_PER_MIN = 1.6;
 const MIN_BLOCK_H = 40;
@@ -17,15 +19,17 @@ const CANVAS_PAD = 12;
 interface Props {
   blocks: ScheduledBlock[];
   tasks: Task[];
+  finished: Task[];
   nowMin: number;
   isToday: boolean;
   dayStart: string;
   dayEnd: string;
+  onOpen: (id: string) => void;
   onDone: (id: string) => void;
   onSkip: (id: string) => void;
 }
 
-export function DayCanvas({ blocks, tasks, nowMin, isToday, dayStart, dayEnd, onDone, onSkip }: Props) {
+export function DayCanvas({ blocks, tasks, finished, nowMin, isToday, dayStart, dayEnd, onOpen, onDone, onSkip }: Props) {
   const c = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const startMin = toMinutes(dayStart);
@@ -80,7 +84,7 @@ export function DayCanvas({ blocks, tasks, nowMin, isToday, dayStart, dayEnd, on
         })}
 
         <View style={styles.blockArea}>
-          {positioned.map((p) => {
+          {positioned.map((p, i) => {
             const task = taskById.get(p.block.taskId);
             if (!task) return null;
             const nowBlock = isToday ? currentBlock(blocks, nowMin) : undefined;
@@ -89,9 +93,11 @@ export function DayCanvas({ blocks, tasks, nowMin, isToday, dayStart, dayEnd, on
                 key={p.block.taskId}
                 positioned={p}
                 task={task}
+                index={i}
                 isCurrent={nowBlock?.taskId === p.block.taskId && task.status === 'pending'}
                 nowMin={nowMin}
                 isToday={isToday}
+                onOpen={onOpen}
                 onDone={onDone}
                 onSkip={onSkip}
               />
@@ -104,16 +110,21 @@ export function DayCanvas({ blocks, tasks, nowMin, isToday, dayStart, dayEnd, on
             <Text style={[type.time, { color: c.accent, width: HOURS_COL - 8, textAlign: 'right' }]}>
               {toHHMM(nowMin)}
             </Text>
+            <PulseDot color={c.accent} />
             <View style={[styles.nowLine, { backgroundColor: c.accent }]} />
           </View>
         ) : null}
       </View>
+
+      <FinishedList tasks={finished} onOpen={onOpen} />
+      <View style={styles.bottomPad} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
+  bottomPad: { height: space.l },
   hourRow: {
     position: 'absolute',
     left: 0,
