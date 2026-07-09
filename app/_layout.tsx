@@ -44,6 +44,15 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="settings" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="task/[id]"
+          options={{
+            presentation: 'formSheet',
+            sheetAllowedDetents: [0.7, 1],
+            sheetGrabberVisible: true,
+            sheetCornerRadius: 20,
+          }}
+        />
       </Stack>
     </GestureHandlerRootView>
   );
