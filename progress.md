@@ -224,3 +224,58 @@ absolute ≤50 view vô hại) → plan `2026-07-05-cadence-mvp-phase3.md` → t
 chồng giờ tách 2 cột; week strip chuyển ngày; "mai họp nhóm 9h sáng" rơi vào
 ngày mai; "#học" ra vạch màu; deadline <2h hiện đếm ngược màu cam; banner
 chuyển việc cũ; notification cho việc ngày mai.
+
+## 2026-07-05 — Fix UI nhỏ + Phase 4a (motion pack + detail sheet)
+
+**Fix theo screenshot:** đường kẻ giờ dừng đúng lề phải (trước chạy sát mép);
+canvas thêm đệm 12pt (nhãn 07:00 không bị cắt); vạch cuối ngày đậm hơn; màn
+Thêm việc chạm khoảng trống để ẩn bàn phím (Keyboard.dismiss).
+
+**Phase 4a — user duyệt gói A+B. Nghiên cứu (subagent) chốt:**
+react-native-svg 15.12.1 chạy trong Expo Go (animate strokeDashoffset với
+strokeDasharray cố định, tránh bug iOS #2200; độ dài truyền hằng số);
+**@gorhom/bottom-sheet VỠ với Reanimated 4** → dùng expo-router
+`presentation:'formSheet'` (native, không thêm dep). Reanimated builders tự
+tôn trọng Reduce Motion.
+
+**Đã làm:**
+- Core (TDD): `dayProgress(tasks)` → {done,total,ratio} cho vòng tiến độ.
+- Data/store: repo `updateTask` (UPDATE full row) + store `editTask(id, patch)`
+  (dọn fixedStart/deadline/tag theo kind, recompute + sync).
+- SVG components: `DayProgressRing` (vòng cạnh header, animate bằng
+  useAnimatedProps + withTiming), `CompletionCheck` (tick vẽ nét khi status=done).
+- Motion: CanvasBlock cascade FadeInDown.delay(i×30) key ổn định không re-fire;
+  now-line thêm PulseDot nhịp thở.
+- Detail sheet: route `app/task/[id].tsx` mở formSheet native (detents 0.7/1,
+  grabber, bo góc) — sửa tên/thời lượng/loại/giờ/deadline/ưu tiên/nhãn + nút Xóa.
+  Chạm block trên canvas để mở.
+
+**Verify:** npm test 82/82 (15 suites); tsc exit 0 (+ noUnusedLocals/Parameters
+sạch); expo-doctor 18/18.
+
+**Chờ user (checklist iPhone):** vòng tiến độ cạnh "Hôm nay" chạy khi đánh xong
+việc; tick vẽ nét khi vuốt Xong; block đổ vào so le khi mở màn; chạm block →
+sheet sửa trượt lên kéo-thả được; sửa giờ/nhãn/xóa hoạt động; đổi ngày cascade lại.
+
+## 2026-07-05 — Bug fix: việc done/skipped "tàng hình" + mục "Đã xong"
+
+**Bug (user báo "0/1 việc nhưng không thấy việc gì"):** scheduleDay chỉ tạo block
+cho task pending → việc done/skipped biến mất khỏi canvas nhưng vẫn bị đếm ở
+header/progress ring. Việc đã bỏ qua thành "bóng ma": bị đếm, không thấy,
+không sửa/xóa được (phải chạm block mới mở sheet). Code hiển thị "finished"
+trong CanvasBlock là dead code (không bao giờ nhận task finished).
+
+**Fix + nâng cấp (user duyệt hướng 1 — danh sách gọn dưới canvas):**
+- Core (TDD): `finishedTasks(tasks)` → done+skipped, sort theo createdAt. +4 test.
+- `FinishedList` component: mục "Đã xong · Đã bỏ qua" (đếm số, card, hàng compact
+  gạch ngang + dấu ✓/×, chạm mở sheet), render dưới grid trong cùng ScrollView.
+- index: điều kiện empty đổi `blocks.length===0` → `tasks.length===0` (hết mâu thuẫn
+  "chưa có gì" vs "0/1").
+- Sheet sửa: thêm segmented Trạng thái (Chưa làm/Xong/Bỏ qua) — kéo việc lỡ bỏ
+  qua về lại; gọi updateStatus live + haptic.
+- Dọn dead code: CanvasBlock giờ chỉ render task pending (bỏ finished/isDone/strike/
+  opacity); chuyển tick vẽ nét (CompletionCheck) sang FinishedList — mỗi lần đánh
+  xong, việc "rơi" vào mục đã xong với tick tự vẽ; canvas block thêm exiting FadeOut.
+
+**Verify:** npm test 86/86 (16 suites); tsc exit 0 (+noUnusedLocals/Parameters sạch);
+expo-doctor 18/18.

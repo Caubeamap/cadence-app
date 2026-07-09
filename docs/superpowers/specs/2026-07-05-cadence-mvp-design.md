@@ -192,6 +192,29 @@ chữ; tôn trọng Reduce Motion (thay spring bằng fade); Dynamic Type không
 **Notification đa ngày:** kế hoạch notification mở rộng cửa sổ hôm nay + ngày mai;
 tôn trọng giới hạn 64 notification chờ của iOS (ưu tiên các việc sớm nhất).
 
+## 7c. Phase 4a — Motion pack + Task detail sheet (user duyệt 2026-07-05)
+
+Nghiên cứu chốt (subagent): react-native-svg chạy trong Expo Go SDK 54
+(~15.12.x) — animate `strokeDashoffset` với `strokeDasharray` cố định (không để
+undefined, tránh bug iOS #2200); độ dài check/ring truyền hằng số (getTotalLength
+trả 0 trên iOS). Reanimated builders tự tôn trọng Reduce Motion. **KHÔNG dùng
+@gorhom/bottom-sheet** (vỡ với Reanimated 4) → dùng `presentation: 'formSheet'`
+của expo-router (react-native-screens native, có sẵn trong Expo Go).
+
+**Nhóm A — Motion pack:**
+1. Cascade mở màn: block đổ vào canvas so le (FadeInDown.delay(i×30).springify()),
+   key ổn định theo taskId nên đánh xong việc không re-fire; đổi ngày remount → cascade lại.
+2. Tick vẽ nét khi hoàn thành: SVG checkmark strokeDashoffset L→0 khi status='done'.
+3. Vòng tiến độ ngày: SVG ring cạnh header, `dayProgress(tasks)` (core, TDD) →
+   {done,total,ratio}; animate bằng useAnimatedProps + withTiming.
+4. Now-line có nhịp thở nhẹ (mở rộng PulseDot).
+
+**Nhóm B — Task detail sheet:**
+5. Chạm block → route `task/[id]` mở dạng formSheet native (detents 0.6/1,
+   grabber, bo góc). Sửa: tiêu đề, thời lượng (stepper), loại cố định/linh hoạt
+   (+giờ/deadline theo loại), ưu tiên, nhãn; nút Xóa. Store thêm `updateTask`,
+   repo thêm `updateTask` (UPDATE full row). Sửa xong → recompute + sync như thường.
+
 ## 8. Error handling
 
 - Parser không hiểu input → không chặn: tạo việc flexible 30 phút với title là
