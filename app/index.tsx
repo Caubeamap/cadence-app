@@ -7,8 +7,11 @@ import { useDayStore } from '../src/stores/useDayStore';
 import { useSettingsStore } from '../src/stores/useSettingsStore';
 import { todayISO, addDaysISO } from '../src/core/date';
 import { summarizeDay } from '../src/core/daySummary';
+import { dayProgress } from '../src/core/dayProgress';
+import { finishedTasks } from '../src/core/finishedTasks';
 import { WeekStrip } from '../src/components/WeekStrip';
 import { DayCanvas } from '../src/components/DayCanvas';
+import { DayProgressRing } from '../src/components/DayProgressRing';
 import { EmptyDay } from '../src/components/EmptyDay';
 import { useTheme } from '../src/theme/useTheme';
 import { radii, space, type } from '../src/theme/tokens';
@@ -44,6 +47,8 @@ export default function TodayScreen() {
   const isToday = selectedDate === todayISO();
   const { caption, title } = headerFor(selectedDate);
   const summary = isToday ? summarizeDay(tasks, blocks, nowMin, { dayStart, dayEnd }) : null;
+  const progress = dayProgress(tasks);
+  const finished = finishedTasks(tasks);
 
   function pickExample(text: string) {
     addFromText(text);
@@ -53,8 +58,15 @@ export default function TodayScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: c.bg, paddingTop: insets.top + space.m }]}>
       <View style={styles.header}>
-        <Text style={[type.caption, { color: c.inkMuted, textTransform: 'capitalize' }]}>{caption}</Text>
-        <Text style={[type.display, { color: c.ink }]}>{title}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerText}>
+            <Text style={[type.caption, { color: c.inkMuted, textTransform: 'capitalize' }]}>{caption}</Text>
+            <Text style={[type.display, { color: c.ink }]}>{title}</Text>
+          </View>
+          {progress.total > 0 ? (
+            <DayProgressRing ratio={progress.ratio} done={progress.done} total={progress.total} />
+          ) : null}
+        </View>
         {summary ? <Text style={[type.caption, { color: c.inkMuted }]}>{summary}</Text> : null}
       </View>
 
@@ -76,16 +88,18 @@ export default function TodayScreen() {
         </Pressable>
       ) : null}
 
-      {blocks.length === 0 ? (
+      {tasks.length === 0 ? (
         <EmptyDay onPick={pickExample} />
       ) : (
         <DayCanvas
           blocks={blocks}
           tasks={tasks}
+          finished={finished}
           nowMin={nowMin}
           isToday={isToday}
           dayStart={dayStart}
           dayEnd={dayEnd}
+          onOpen={(id) => router.push(`/task/${id}`)}
           onDone={(id) => updateStatus(id, 'done')}
           onSkip={(id) => updateStatus(id, 'skipped')}
         />
@@ -122,6 +136,8 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { paddingHorizontal: space.l, paddingBottom: space.m, gap: space.xs },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerText: { flex: 1, gap: 2 },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
