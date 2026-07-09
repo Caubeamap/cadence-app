@@ -49,6 +49,15 @@ export function updateTaskStatus(id: string, status: Task['status']): void {
   getDb().runSync('UPDATE tasks SET status = ? WHERE id = ?', status, id);
 }
 
+export function updateTask(t: Task): void {
+  getDb().runSync(
+    `UPDATE tasks SET title = ?, duration_min = ?, kind = ?, fixed_start = ?,
+       deadline = ?, priority = ?, tag = ? WHERE id = ?`,
+    t.title, t.durationMin, t.kind, t.fixedStart ?? null,
+    t.deadline ?? null, t.priority, t.tag ?? null, t.id,
+  );
+}
+
 export function deleteTask(id: string): void {
   getDb().runSync('DELETE FROM tasks WHERE id = ?', id);
 }

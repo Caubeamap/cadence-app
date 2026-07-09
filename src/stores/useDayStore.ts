@@ -13,6 +13,7 @@ import {
   pendingTasksBefore,
   taskCountsByDate,
   tasksForDate,
+  updateTask,
   updateTaskStatus,
 } from '../data/taskRepo';
 import { syncScheduledReminders } from '../services/notifications';
@@ -30,6 +31,7 @@ interface DayState {
   tick: () => void;
   addFromText: (text: string) => Task;
   updateStatus: (id: string, status: TaskStatus) => void;
+  editTask: (id: string, patch: Partial<Task>) => void;
   remove: (id: string) => void;
   moveCarryoverToToday: () => void;
 }
@@ -115,6 +117,17 @@ export const useDayStore = create<DayState>((set, get) => {
 
     updateStatus: (id, status) => {
       updateTaskStatus(id, status);
+      refresh(get().selectedDate);
+    },
+
+    editTask: (id, patch) => {
+      const current = get().tasks.find((t) => t.id === id);
+      if (!current) return;
+      const next: Task = { ...current, ...patch };
+      if (next.kind === 'flexible') delete next.fixedStart;
+      if (next.kind === 'fixed') delete next.deadline;
+      if (!next.tag) delete next.tag;
+      updateTask(next);
       refresh(get().selectedDate);
     },
 
